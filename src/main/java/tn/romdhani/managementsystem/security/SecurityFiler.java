@@ -31,23 +31,41 @@ public class SecurityFiler {
 
 
     @Bean
-    public SecurityFilterChain securityFilterChain
-            (HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.csrf(AbstractHttpConfigurer::disable)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                .exceptionHandling(exception -> exception.accessDeniedHandler(customAccessDenialHandler)
-                        .authenticationEntryPoint(customAuthenticationEntryPoint)
-                )
-                .authorizeHttpRequests(request ->request
+                .authorizeHttpRequests(auth -> auth
+                        // Allow authentication endpoints
                         .requestMatchers("/api/auth/**").permitAll()
+
+                        // Allow Swagger UI and OpenAPI docs
+                        .requestMatchers(
+                                "/api/test/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/index.html"
+                        ).permitAll()
+
+                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(manager -> manager.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDenialHandler)
+                )
+                .sessionManagement(sess -> sess
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                // Add your JWT/auth filter before UsernamePasswordAuthenticationFilter
                 .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);
-        return httpSecurity.build();
 
-
+        return http.build();
     }
+
+
 
     @Bean
 
