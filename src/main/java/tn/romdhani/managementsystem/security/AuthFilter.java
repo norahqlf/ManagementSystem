@@ -4,55 +4,77 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
 @Component
-@Slf4j
-@RequiredArgsConstructor
 public class AuthFilter extends OncePerRequestFilter {
 
-    private final JwtUtils jwtUtils;
-    private final CustomUserDetailsService customUserDetailsService;
+    @Autowired
+    private JwtUtils jwtUtils;
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
-                                    FilterChain filterChain)
-            throws ServletException, IOException {
-        String token = getTokenFromRequest(request);
+                                    FilterChain filterChain) throws ServletException, IOException {
+        String authHeader = request.getHeader("Authorization");
 
-        if (token != null) {
-            String email = jwtUtils.getUsernameFromToken(token);
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
-            if (StringUtils.hasText(email) && jwtUtils.isTokenValid(token, userDetails)) {
-                log.info("Token is valid, {}", email);
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities()
-                );
-                authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+        String token = null;
+        String username = null;
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+            try {
+                username = jwtUtils.getUsernameFromToken(token);
+            } catch (Exception e) {
+                // ignore invalid tokens for now, continue filter chain
             }
         }
-        try {
-            filterChain.doFilter(request, response);
-        }catch (Exception e) {
-            log.error("Error occurred in AuthFilter : {}", e.getMessage());
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+            if (jwtUtils.isTokenValid(token, userDetails)) {
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
         }
+
+        filterChain.doFilter(request, response);
     }
-    private String getTokenFromRequest(HttpServletRequest request) {
-        String tokenWithBearer = request.getHeader("Authorization");
-        if (tokenWithBearer != null && tokenWithBearer.startsWith("Bearer ")) {
-            return tokenWithBearer.substring(7);
-        }
-        return null;
+
+    /**
+     * Skip JWT filtering for Swagger, API docs, and public endpoints
+     */
+    private static final AntPathMatcher pathMatcher = new AntPathMatcher();
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        System.out.println("Skipping filter check for path: " + path);
+        return path.startsWith("/v3/api-docs")
+                || path.startsWith("/swagger-ui")
+                || path.equals("/swagger-ui.html")
+                || path.startsWith("/api/auth")
+                || path.startsWith("/api/test");
     }
+
 }

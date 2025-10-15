@@ -9,16 +9,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class CorsConfig {
 
     @Bean
-    public WebMvcConfigurer webMvcConfigurer(){
-        return new WebMvcConfigurer(){
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedMethods("GET" , "POST" , "PUT" , "DELETE")
-                        .allowedOrigins("*");
+                        .allowedOrigins("http://localhost:8089")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true); // 👈 allow Authorization header later
             }
-
         };
     }
 }
-

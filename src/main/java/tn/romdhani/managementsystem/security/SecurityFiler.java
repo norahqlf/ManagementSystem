@@ -25,6 +25,7 @@ import tn.romdhani.managementsystem.exceptions.CustomAuthenticationEntryPoint;
 @RequiredArgsConstructor
 @Slf4j
 public class SecurityFiler {
+
     private final AuthFilter authFilter;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomAccessDenialHandler customAccessDenialHandler;
@@ -33,55 +34,36 @@ public class SecurityFiler {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.disable()) // or .cors(Customizer.withDefaults()) if you have CorsConfig
                 .authorizeHttpRequests(auth -> auth
-                        // Allow authentication endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
-
-                        // Allow Swagger UI and OpenAPI docs
                         .requestMatchers(
-                                "/api/test/**",
                                 "/v3/api-docs/**",
-                                "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/swagger-ui/index.html"
+                                "/swagger-ui/**",
+                                "/swagger-resources/**",
+                                "/webjars/**"
                         ).permitAll()
-
-                        // Everything else requires authentication
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/test/**").permitAll() // optional test endpoints
                         .anyRequest().authenticated()
                 )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(customAuthenticationEntryPoint)
-                        .accessDeniedHandler(customAccessDenialHandler)
-                )
-                .sessionManagement(sess -> sess
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                // Add your JWT/auth filter before UsernamePasswordAuthenticationFilter
-                .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
 
-
     @Bean
-
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 }
-
-
-
-
-
-
