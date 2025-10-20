@@ -35,7 +35,7 @@ public class SecurityFiler {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.disable()) // or .cors(Customizer.withDefaults()) if you have CorsConfig
+                .cors(Customizer.withDefaults()) // or .cors(Customizer.withDefaults()) if you have CorsConfig
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/v3/api-docs/**",
