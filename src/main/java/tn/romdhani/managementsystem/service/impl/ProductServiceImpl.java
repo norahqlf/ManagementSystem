@@ -168,11 +168,11 @@ public class ProductServiceImpl implements ProductService {
         try {
             File destinationFile = new File(imagePath);
             imageFile.transferTo(destinationFile); //we are transferring(writing to this folder)
-
+            return "/products/" + uniqueFileName;
         }catch (Exception e){
             throw new IllegalArgumentException("Error occurred while saving image" + e.getMessage());
         }
-        return "products/" + uniqueFileName;
+//  return "/products/" + uniqueFileName;
     }
 
 
