@@ -119,10 +119,12 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public Response returnToSupplier(TransactionRequest transactionRequest) {
+       // Long productId = transactionRequest.getProduct_id();
+        //Long supplierId = transactionRequest.getSupplier_id();
+        // Integer quantity = transactionRequest.getQuantity();
         Long productId = transactionRequest.getProduct_id();
-        Long supplierId = transactionRequest.getSupplier_id();
+        Long supplierId = transactionRequest.getSupplier_id(); // ✅ Fixed line
         Integer quantity = transactionRequest.getQuantity();
-
         if (supplierId == null) throw new NameValueRequiredException("Supplier Id id Required");
 
         Product product = productRepository.findById(productId)
