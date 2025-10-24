@@ -88,6 +88,10 @@ public class TransactionServiceImpl implements TransactionService {
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(()-> new NotFoundException("Product Not Found"));
+        // ✅ Check if stock is sufficient
+        if (product.getStockQuantity() < quantity) {
+            throw new NameValueRequiredException("Not enough stock available to sell");
+        }
         User user = userService.getCurrentLoggedUser();
 
 //update the stock quantity and re-save
